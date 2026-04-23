@@ -1,0 +1,12 @@
+from scapy.all import *
+
+name = "aaaaa.example.com"
+
+dns = DNS(id=0xAAAA, qr=0, qd=DNSQR(qname=name))
+ip = IP(dst="172.30.105.51")
+udp = UDP(dport=53)
+
+pkt = ip/udp/dns
+
+with open("ip_req.bin", "wb") as f:
+    f.write(bytes(pkt))

